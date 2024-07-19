@@ -34,6 +34,9 @@ ocp_model.model_struct.constr_lh_0 = [-1,-1]'; % Not 0 because then 0 initial co
 ocp_model.model_struct.constr_uh_0 = [max_velocity_squared_xy,max_acc_squared_xy]';
 
 ocp_model.set('constr_x0', x0);
+ocp_model.set('cost_type', 'ext_cost')
+ocp_model.set('cost_type_0', 'ext_cost')
+ocp_model.set('cost_type_e', 'ext_cost')
 
 % dynamics
 ocp_model.set('dyn_type', 'explicit');
@@ -46,10 +49,9 @@ ocp_opts = acados_ocp_opts();
 ocp_opts.set('sim_method', sim_method);
 ocp_opts.set('param_scheme_N', N);
 ocp_opts.set('nlp_solver', nlp_solver);
-ocp_opts.set('nlp_solver_max_iter', 30000);
-ocp_opts.set('globalization', 'merit_backtracking')
-
-ocp_opts.set('levenberg_marquardt', 100000);
+ocp_opts.set('nlp_solver_max_iter', 100);
+ocp_opts.set('regularize_method', 'mirror');
+ocp_opts.set('nlp_solver_exact_hessian', 'true');
 
 ocp = acados_ocp(ocp_model, ocp_opts);
 x_traj_init = repmat(x0', 1,N+1);

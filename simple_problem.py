@@ -85,15 +85,16 @@ def main():
     ###########################################################################
 
     # Initial conditions
-    ocp.constraints.lbx_0 = x0
-    ocp.constraints.ubx_0 = x0
-    ocp.constraints.idxbx_0 = np.arange(nx)
+    # ocp.constraints.lbx_0 = x0
+    # ocp.constraints.ubx_0 = x0
+    # ocp.constraints.idxbx_0 = np.arange(nx)
+    ocp.constraints.x0 = x0
 
     # Nonlinear Constraints
     max_velocity_squared_xy = 100
     max_acc_squared_xy = 9
     uh = np.array([max_velocity_squared_xy, max_acc_squared_xy])
-    lh = np.array([-1e8, -1e8])
+    lh = 1e0 * np.array([-1, -1])
     squared_velocity_and_constraints = cs.vertcat(cs.sumsqr(ocp.model.x[2:]),
                                                   cs.sumsqr(ocp.model.u))
     # Over path
