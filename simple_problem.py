@@ -1,4 +1,4 @@
-from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel
+from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel, latexify_plot
 import numpy as np
 from matplotlib import pyplot as plt
 import casadi as cs
@@ -161,6 +161,26 @@ def main():
     print("Initial state: ", sol_X[0,:])
     print("Initial control: ", sol_U[0,:])
     print("Terminal state: ", sol_X[N,:])
+
+    # plot results
+    latexify_plot()
+    plt.figure()
+    plt.plot(sol_X[:,0], sol_X[:,1], '-o')
+    plt.title('Position trajectory')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.grid()
+
+    plt.figure()
+    plt.title('Control trajectory')
+    acc_norm = [np.linalg.norm(sol_U[i]) for i in range(N)] + [None]
+    vel_norm = [np.linalg.norm(sol_X[i, 2:]) for i in range(N+1)]
+    plt.plot(ocp.solver_options.shooting_nodes, acc_norm, '-o', label='acc norm')
+    plt.plot(ocp.solver_options.shooting_nodes, vel_norm, '-o', label='vel norm')
+    plt.grid()
+    plt.legend()
+
+    plt.show()
 
 if __name__ == '__main__':
     main()
