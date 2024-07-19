@@ -92,20 +92,19 @@ def main():
     # Nonlinear Constraints
     max_velocity_squared_xy = 100
     max_acc_squared_xy = 9
-    max_speed_and_velocity = np.array([max_velocity_squared_xy, max_acc_squared_xy])
-    lower_bound = np.array([-1e8, -1e8])
-    # lower_bound = np.arravy([0, 0]) # this one gives problems for QP solvers!
-    squared_velocity_and_constraints = cs.vertcat(cs.sumsqr(ocp.model.x[:2]),
-                                                  cs.sumsqr(ocp.model.x[2:]))
+    uh = np.array([max_velocity_squared_xy, max_acc_squared_xy])
+    lh = np.array([-1e8, -1e8])
+    squared_velocity_and_constraints = cs.vertcat(cs.sumsqr(ocp.model.x[2:]),
+                                                  cs.sumsqr(ocp.model.u))
     # Over path
     ocp.model.con_h_expr = squared_velocity_and_constraints
-    ocp.constraints.uh = max_speed_and_velocity
-    ocp.constraints.lh = lower_bound
+    ocp.constraints.uh = uh
+    ocp.constraints.lh = lh
 
     # terminal constraints
-    ocp.model.con_h_expr_e = squared_velocity_and_constraints
-    ocp.constraints.uh_e = max_speed_and_velocity
-    ocp.constraints.lh_e = lower_bound
+    ocp.model.con_h_expr_0 = squared_velocity_and_constraints
+    ocp.constraints.uh_0 = uh
+    ocp.constraints.lh_0 = lh
 
     ###########################################################################
     # set solver options
