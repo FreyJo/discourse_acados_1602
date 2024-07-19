@@ -34,9 +34,9 @@ ocp_model.model_struct.constr_lh_0 = [-1,-1]'; % Not 0 because then 0 initial co
 ocp_model.model_struct.constr_uh_0 = [max_velocity_squared_xy,max_acc_squared_xy]';
 
 ocp_model.set('constr_x0', x0);
-ocp_model.set('cost_type', 'ext_cost')
-ocp_model.set('cost_type_0', 'ext_cost')
-ocp_model.set('cost_type_e', 'ext_cost')
+% ocp_model.set('cost_type', 'ext_cost')
+% ocp_model.set('cost_type_0', 'ext_cost')
+% ocp_model.set('cost_type_e', 'ext_cost')
 
 % dynamics
 ocp_model.set('dyn_type', 'explicit');
@@ -52,6 +52,8 @@ ocp_opts.set('nlp_solver', nlp_solver);
 ocp_opts.set('nlp_solver_max_iter', 100);
 ocp_opts.set('regularize_method', 'mirror');
 ocp_opts.set('nlp_solver_exact_hessian', 'true');
+
+disp(ocp_model.model_struct.cost_expr_ext_cost)
 
 ocp = acados_ocp(ocp_model, ocp_opts);
 x_traj_init = repmat(x0', 1,N+1);
@@ -163,7 +165,7 @@ V_des = [0, 0]'; % Desired velocity, but no weight is applied to it
 X_des = vertcat(P_des, V_des);
 
 expr_ext_cost_e = (X_des - sym_x)'* W_x * (X_des - sym_x);
-expr_ext_cost = expr_ext_cost_e + 0.5 * sym_u' * W_u * sym_u;
+expr_ext_cost = expr_ext_cost_e + sym_u' * W_u * sym_u;
 
 W = blkdiag(W_x, W_u);
 

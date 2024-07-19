@@ -69,7 +69,8 @@ def main():
     ###########################################################################
 
     cost_type = "EXTERNAL"
-    cost_type = "LINEAR_LS"
+    # cost_type = "LINEAR_LS"
+    cost_type = "LLS_SMALL"
     W_x = cs.diag(cs.vertcat(100, 100,0,0))
     W_u = cs.diag(cs.vertcat(1, 1))
 
@@ -96,6 +97,18 @@ def main():
         ocp.cost.W_e = 2 * W_x.full()
         ocp.cost.yref = np.concatenate((P_des, V_des, np.zeros((nu, 1)))).flatten()
         ocp.cost.yref_e = np.concatenate((P_des, V_des)).flatten()
+    elif cost_type == "LLS_SMALL":
+        ocp.cost.cost_type = 'LINEAR_LS'
+        ny = 4
+        ocp.cost.Vx = np.zeros((ny, nx))
+        ocp.cost.Vx[:2, :2] = np.eye(2)
+        ocp.cost.Vu = np.zeros((ny, nu))
+        ocp.cost.Vu[2:, :] = np.eye(nu)
+        ocp.cost.W = 2 * block_diag(cs.diag(cs.vertcat(100, 100)), W_u.full())
+        ocp.cost.yref = np.concatenate((P_des, np.zeros((nu, 1)))).flatten()
+        ocp.cost.Vx_e = ocp.cost.Vx[:2, :]
+        ocp.cost.W_e = 2 * cs.diag(cs.vertcat(100, 100)).full()
+        ocp.cost.yref_e = P_des.full().flatten()
     else:
         raise Exception(f'Unknown cost type {cost_type}.')
 
@@ -139,6 +152,7 @@ def main():
 
     # DDP options
     ocp.solver_options.nlp_solver_max_iter = 100
+    ocp.solver_options.qp_solver_iter_max = 50
     ocp.solver_options.nlp_solver_type = 'SQP'
     # ocp.solver_options.globalization = 'FUNNEL_L1PEN_LINESEARCH'
     ocp.solver_options.with_adaptive_levenberg_marquardt = False
