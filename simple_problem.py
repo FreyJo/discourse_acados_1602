@@ -70,9 +70,9 @@ def main():
 
     cost_type = "EXTERNAL"
     # cost_type = "LINEAR_LS"
-    cost_type = "LLS_SMALL"
+    # cost_type = "LLS_SMALL"
     W_x = cs.diag(cs.vertcat(100, 100,0,0))
-    W_u = cs.diag(cs.vertcat(1, 1))
+    W_u = 0.5 * cs.diag(cs.vertcat(1, 1))
 
     P_des = cs.vertcat(100, -50) # Desired Position
     V_des = cs.vertcat(0, 0) # Desired velocity, but no weight is applied to it
