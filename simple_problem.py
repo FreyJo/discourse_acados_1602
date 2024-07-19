@@ -6,9 +6,8 @@ import casadi as cs
 def export_double_integrator_model():
 
     model_name = 'double_integrator_2d'
-    ## system dimensions
+    # system dimensions
     nx = 4
-    nu = 2
 
     ## named symbolic variables
     # define states
@@ -54,22 +53,13 @@ def main():
     nx = model.x.rows()
     nu = model.u.rows()
     N = 50
-    M = 2 # Needed for integrator
 
     # set dimensions
     ocp.dims.N = N
 
     Xi_0 = [0,0] # Initial position
     Vi_0 = [-4,6] #  Initial velocity
-    # Vi_0 = [0,0] #  Initial velocity
     x0 = np.array(Xi_0 + Vi_0)
-
-    xf = 0.0
-    yf = 11.0
-    thetaf = np.pi/2
-
-    v_max = 1.0
-    delta_max = np.pi/6
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
