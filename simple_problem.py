@@ -2,6 +2,7 @@ from acados_template import AcadosOcp, AcadosOcpSolver, AcadosModel, latexify_pl
 import numpy as np
 from matplotlib import pyplot as plt
 import casadi as cs
+from scipy.linalg import block_diag
 
 def export_double_integrator_model():
 
@@ -66,19 +67,37 @@ def main():
     ###########################################################################
     # Define cost
     ###########################################################################
+
+    cost_type = "EXTERNAL"
+    cost_type = "LINEAR_LS"
     W_x = cs.diag(cs.vertcat(100, 100,0,0))
     W_u = cs.diag(cs.vertcat(1, 1))
 
     P_des = cs.vertcat(100, -50) # Desired Position
     V_des = cs.vertcat(0, 0) # Desired velocity, but no weight is applied to it
-    X_des = cs.vertcat(P_des, V_des)
+    if cost_type == "EXTERNAL":
+        X_des = cs.vertcat(P_des, V_des)
 
-    cost_x = (X_des - model.x).T @ W_x @ (X_des - model.x)
+        cost_x = (X_des - model.x).T @ W_x @ (X_des - model.x)
 
-    ocp.cost.cost_type = 'EXTERNAL'
-    ocp.model.cost_expr_ext_cost = cost_x + model.u.T @ W_u @ model.u
-    ocp.cost.cost_type_e = 'EXTERNAL'
-    ocp.model.cost_expr_ext_cost_e = cost_x
+        ocp.cost.cost_type = 'EXTERNAL'
+        ocp.model.cost_expr_ext_cost = cost_x + model.u.T @ W_u @ model.u
+        ocp.cost.cost_type_e = 'EXTERNAL'
+        ocp.model.cost_expr_ext_cost_e = cost_x
+    elif cost_type == "LINEAR_LS":
+        ocp.cost.cost_type = 'LINEAR_LS'
+        ny = nx + nu
+        ocp.cost.Vx = np.zeros((ny, nx))
+        ocp.cost.Vx[:nx, :] = np.eye(nx)
+        ocp.cost.Vu = np.zeros((ny, nu))
+        ocp.cost.Vu[nx:, :] = np.eye(nu)
+        ocp.cost.W = 2 * block_diag(W_x.full(), W_u.full())
+        ocp.cost.Vx_e = np.eye(nx)
+        ocp.cost.W_e = 2 * W_x.full()
+        ocp.cost.yref = np.concatenate((P_des, V_des, np.zeros((nu, 1)))).flatten()
+        ocp.cost.yref_e = np.concatenate((P_des, V_des)).flatten()
+    else:
+        raise Exception(f'Unknown cost type {cost_type}.')
 
     ###########################################################################
     # Define constraints
