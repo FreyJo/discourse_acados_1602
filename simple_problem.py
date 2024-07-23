@@ -38,11 +38,6 @@ def export_double_integrator_model():
     return model
 
 def main():
-
-    # The flag denotes, if the problem should be transformed into a feasibility
-    # problem, or if the unconstrained OCP should be solved.
-    SOLVE_FEASIBILITY_PROBLEM = False
-
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
@@ -50,7 +45,7 @@ def main():
     model = export_double_integrator_model()
     ocp.model = model
 
-    Tf = 5.0 # It is a time optimal problem with time scaling
+    Tf = 5.0
     nx = model.x.rows()
     nu = model.u.rows()
     N = 50
@@ -155,14 +150,13 @@ def main():
     ocp.solver_options.qp_solver_iter_max = 50
     ocp.solver_options.nlp_solver_type = 'SQP'
     # ocp.solver_options.globalization = 'FUNNEL_L1PEN_LINESEARCH'
+    # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
     ocp.solver_options.with_adaptive_levenberg_marquardt = False
+    # ocp.solver_options.reg_epsilon = 1e-3
     ocp.solver_options.regularize_method = 'MIRROR'
 
     # set prediction horizon
     ocp.solver_options.tf = Tf
-
-    if SOLVE_FEASIBILITY_PROBLEM:
-        ocp.translate_to_feasibility_problem()
 
     ocp_solver = AcadosOcpSolver(ocp, json_file = 'simple_double_integrator.json')
 
@@ -178,6 +172,7 @@ def main():
 
     # Solve the problem
     status = ocp_solver.solve()
+    ocp_solver.print_statistics()
 
     # iter = ocp_solver.get_stats('nlp_iter')
     # assert iter <= 14, "DDP Solver should converge within 14 iterations!"
