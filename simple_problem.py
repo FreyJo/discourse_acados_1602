@@ -37,7 +37,7 @@ def export_double_integrator_model():
 
     return model
 
-def main():
+def main(modification=4):
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
@@ -54,10 +54,30 @@ def main():
     ocp.dims.N = N
 
     Xi_0 = [0,0] # Initial position
-    # Vi_0 = [-3,6] #  Initial velocity
     Vi_0 = [-4,6] #  Initial velocity
-    x0 = np.array(Xi_0 + Vi_0)
     u_init = np.array([-0.0, -0.0])
+
+    globalization = 'FIXED_STEP'
+    qp_solver_iter_max = 50
+    qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+
+    if modification == 1:
+        # Change initial position
+        Xi_0 = [-10, 0]
+        globalization = 'MERIT_BACKTRACKING'
+        qp_solver_iter_max = 100
+    elif modification == 2:
+        # Change initial velocity
+        Vi_0 = [-3,6]
+    elif modification == 3:
+        u_init = np.array([-1.0, -1.0])
+    elif modification == 4:
+        Tf = 10.0
+        qp_solver = "FULL_CONDENSING_DAQP"
+        qp_solver_iter_max = 200
+
+
+    x0 = np.array(Xi_0 + Vi_0)
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
@@ -139,8 +159,7 @@ def main():
     ###########################################################################
     # set solver options
     ###########################################################################
-    ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
-    # ocp.solver_options.qp_solver = 'FULL_CONDENSING_DAQP'
+    ocp.solver_options.qp_solver = qp_solver
     # ocp.solver_options.qp_solver_cond_N = N
     # ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
     ocp.solver_options.hessian_approx = 'EXACT'
@@ -151,10 +170,10 @@ def main():
 
     # DDP options
     ocp.solver_options.nlp_solver_max_iter = 100
-    # ocp.solver_options.qp_solver_iter_max = 100
+    ocp.solver_options.qp_solver_iter_max = qp_solver_iter_max
     ocp.solver_options.nlp_solver_type = 'SQP'
     # ocp.solver_options.globalization = 'FUNNEL_L1PEN_LINESEARCH'
-    # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
+    ocp.solver_options.globalization = globalization
     ocp.solver_options.with_adaptive_levenberg_marquardt = False
     # ocp.solver_options.reg_epsilon = 1e-3
     ocp.solver_options.regularize_method = 'MIRROR'
