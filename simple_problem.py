@@ -138,12 +138,14 @@ def main():
     # set solver options
     ###########################################################################
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+    # ocp.solver_options.qp_solver = 'FULL_CONDENSING_DAQP'
     # ocp.solver_options.qp_solver_cond_N = N
     # ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
     ocp.solver_options.hessian_approx = 'EXACT'
     ocp.solver_options.integrator_type = 'ERK'
     # ocp.solver_options.sim_method_num_steps = M
     ocp.solver_options.print_level = 1
+    # ocp.solver_options.nlp_solver_ext_qp_res = 1
 
     # DDP options
     ocp.solver_options.nlp_solver_max_iter = 100
@@ -167,18 +169,12 @@ def main():
 
     for i in range(N):
         ocp_solver.set(i, "x", x0)
-        # ocp_solver.set(i, "u", U_init[:,i])
+        # ocp_solver.set(i, "u", u_init)
     ocp_solver.set(N, "x", x0)
 
     # Solve the problem
     status = ocp_solver.solve()
     ocp_solver.print_statistics()
-
-    # iter = ocp_solver.get_stats('nlp_iter')
-    # assert iter <= 14, "DDP Solver should converge within 14 iterations!"
-
-    # if status != 0:
-    #     raise Exception(f'acados returned status {status}.')
 
     # get solution
     for i in range(N):
