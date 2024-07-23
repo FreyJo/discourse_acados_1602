@@ -54,8 +54,10 @@ def main():
     ocp.dims.N = N
 
     Xi_0 = [0,0] # Initial position
+    # Vi_0 = [-3,6] #  Initial velocity
     Vi_0 = [-4,6] #  Initial velocity
     x0 = np.array(Xi_0 + Vi_0)
+    u_init = np.array([-0.0, -0.0])
 
     # the 'EXTERNAL' cost type can be used to define general cost terms
     # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
@@ -149,7 +151,7 @@ def main():
 
     # DDP options
     ocp.solver_options.nlp_solver_max_iter = 100
-    ocp.solver_options.qp_solver_iter_max = 50
+    # ocp.solver_options.qp_solver_iter_max = 100
     ocp.solver_options.nlp_solver_type = 'SQP'
     # ocp.solver_options.globalization = 'FUNNEL_L1PEN_LINESEARCH'
     # ocp.solver_options.globalization = 'MERIT_BACKTRACKING'
@@ -169,7 +171,7 @@ def main():
 
     for i in range(N):
         ocp_solver.set(i, "x", x0)
-        # ocp_solver.set(i, "u", u_init)
+        ocp_solver.set(i, "u", u_init)
     ocp_solver.set(N, "x", x0)
 
     # Solve the problem
