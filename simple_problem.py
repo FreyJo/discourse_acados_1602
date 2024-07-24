@@ -37,7 +37,7 @@ def export_double_integrator_model():
 
     return model
 
-def main(modification=4):
+def main(modification=6):
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
@@ -75,7 +75,23 @@ def main(modification=4):
         Tf = 10.0
         qp_solver = "FULL_CONDENSING_DAQP"
         qp_solver_iter_max = 200
-
+    # other QP solver settings
+    elif modification == 5:
+        # fails with infeasible QP
+        qp_solver_iter_max = 200
+        qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+    elif modification == 6:
+        # works fine
+        qp_solver_iter_max = 200
+        qp_solver = 'FULL_CONDENSING_DAQP'
+    elif modification == 7:
+        # works fine
+        qp_solver_iter_max = 200
+        qp_solver = 'PARTIAL_CONDENSING_OSQP'
+    elif modification == 7:
+        # works fine
+        qp_solver_iter_max = 200
+        qp_solver = 'PARTIAL_CONDENSING_QPOASES'
 
     x0 = np.array(Xi_0 + Vi_0)
 
@@ -89,7 +105,7 @@ def main(modification=4):
     # cost_type = "LINEAR_LS"
     cost_type = "LLS_SMALL"
     W_x = cs.diag(cs.vertcat(100, 100,0,0))
-    W_u = cs.diag(cs.vertcat(1, 1))
+    W_u = 1.* cs.diag(cs.vertcat(1, 1))
 
     P_des = cs.vertcat(100, -50) # Desired Position
     V_des = cs.vertcat(0, 0) # Desired velocity, but no weight is applied to it
