@@ -37,7 +37,7 @@ def export_double_integrator_model():
 
     return model
 
-def main(modification=6):
+def main(modification=9):
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
@@ -88,10 +88,14 @@ def main(modification=6):
         # works fine
         qp_solver_iter_max = 200
         qp_solver = 'PARTIAL_CONDENSING_OSQP'
-    elif modification == 7:
+    elif modification == 8:
         # works fine
         qp_solver_iter_max = 200
         qp_solver = 'PARTIAL_CONDENSING_QPOASES'
+    elif modification == 9:
+        # works fine
+        qp_solver_iter_max = 200
+        qp_solver = 'FULL_CONDENSING_HPIPM'
 
     x0 = np.array(Xi_0 + Vi_0)
 
