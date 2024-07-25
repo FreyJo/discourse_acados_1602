@@ -264,5 +264,51 @@ def main(modification=9):
 
     plt.show()
 
+
+
+def evaluate_hessian_eigenvalues(acados_solver: AcadosOcpSolver, N_horizon: int):
+    offset = 0
+    min_eigv_total = 1e12
+    min_abs_eigv = 1e12
+
+    for i in range(N_horizon+1):
+        hess_block_acados = acados_solver.get_hessian_block(i)
+        nv = hess_block_acados.shape[0]
+        offset += nv
+
+        eigv = np.linalg.eigvals(hess_block_acados)
+        min_eigv = np.min(eigv)
+        if min_eigv < min_eigv_total:
+            min_eigv_total = min_eigv
+            i_worst_eigv = i
+
+        min_abs_eigv = min(min_abs_eigv, np.min(np.abs(eigv)))
+
+    # check projected Hessian
+    min_abs_eig_proj_hess = 1e12
+    min_eig_proj_hess = 1e12
+    min_eig_P = 1e12
+    min_abs_eig_P = 1e12
+    for i in range(1, N_horizon):
+        P_mat = acados_solver.get_from_qp_in(i, 'P')
+        B_mat = acados_solver.get_from_qp_in(i-1, 'B')
+        # Lr: lower triangular decomposition of R within Riccati != R in qp_in!
+        Lr = acados_solver.get_from_qp_in(i-1, 'Lr')
+        R_ric = Lr @ Lr.T
+        proj_hess_block = R_ric + B_mat.T @ P_mat @ B_mat
+        eigv = np.linalg.eigvals(proj_hess_block)
+        min_eigv = np.min(eigv)
+        min_eig_proj_hess = min(min_eigv, min_eig_proj_hess)
+        min_abs_eig_proj_hess = min(min_abs_eig_proj_hess, np.min(np.abs(eigv)))
+        # P
+        eigv = np.linalg.eigvals(P_mat)
+        min_eig_P = min(min_eig_P, np.min(eigv))
+        min_abs_eig_P = min(min_abs_eig_P, np.min(np.abs(eigv)))
+
+    print(f"Minimum eigenvalue of total Hessian: {min_eigv_total, min_abs_eigv, min_abs_eig_proj_hess, min_eig_proj_hess, min_eig_P, min_abs_eig_P}")
+
+    return min_eigv_total, min_abs_eigv, min_abs_eig_proj_hess, min_eig_proj_hess, min_eig_P, min_abs_eig_P, i_worst_eigv
+
+
 if __name__ == '__main__':
     main()
