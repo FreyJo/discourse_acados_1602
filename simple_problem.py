@@ -108,7 +108,7 @@ def main(modification=9):
     cost_type = "EXTERNAL"
     # cost_type = "LINEAR_LS"
     cost_type = "LLS_SMALL"
-    W_x = cs.diag(cs.vertcat(100, 100,0,0))
+    W_x = cs.diag(cs.vertcat(100, 100, 0, 0))
     W_u = 1.* cs.diag(cs.vertcat(1, 1))
 
     P_des = cs.vertcat(100, -50) # Desired Position
@@ -162,19 +162,36 @@ def main(modification=9):
     # Nonlinear Constraints
     max_velocity_squared_xy = 100
     max_acc_squared_xy = 9
-    uh = np.array([max_velocity_squared_xy, max_acc_squared_xy])
-    lh = 1e0 * np.array([-1, -1])
-    squared_velocity_and_constraints = cs.vertcat(cs.sumsqr(ocp.model.x[2:]),
-                                                  cs.sumsqr(ocp.model.u))
-    # Over path
-    ocp.model.con_h_expr = squared_velocity_and_constraints
-    ocp.constraints.uh = uh
-    ocp.constraints.lh = lh
 
-    # terminal constraints
-    ocp.model.con_h_expr_0 = squared_velocity_and_constraints
-    ocp.constraints.uh_0 = uh
-    ocp.constraints.lh_0 = lh
+    constraint_formulation = "BGH"
+    lh = 1e3 * np.array([-1, -1])
+    uh = np.array([max_velocity_squared_xy, max_acc_squared_xy])
+    if constraint_formulation == "BGH":
+        squared_velocity_and_constraints = cs.vertcat(cs.sumsqr(ocp.model.x[2:]),
+                                                    cs.sumsqr(ocp.model.u))
+        # Over path
+        ocp.model.con_h_expr = squared_velocity_and_constraints
+        ocp.constraints.uh = uh
+        ocp.constraints.lh = lh
+
+        # terminal constraints
+        ocp.model.con_h_expr_0 = squared_velocity_and_constraints
+        ocp.constraints.uh_0 = uh
+        ocp.constraints.lh_0 = lh
+
+    else:
+        ocp.model.con_r_in_phi = cs.SX.sym('con_r', 4, 1)
+        ocp.model.con_phi_expr = cs.vertcat(cs.sumsqr(ocp.model.con_r_in_phi[:2]),
+                                                    cs.sumsqr(ocp.model.con_r_in_phi[2:]))
+        ocp.model.con_r_expr = cs.vertcat(ocp.model.x[2:], ocp.model.u)
+        ocp.constraints.uphi = uh
+        ocp.constraints.lphi = lh
+
+        ocp.model.con_r_in_phi_0 = ocp.model.con_r_in_phi
+        ocp.model.con_phi_expr_0 = ocp.model.con_phi_expr
+        ocp.model.con_r_expr_0 = ocp.model.con_r_expr
+        ocp.constraints.uphi_0 = uh
+        ocp.constraints.lphi_0 = lh
 
     ###########################################################################
     # set solver options
