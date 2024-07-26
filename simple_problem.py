@@ -37,7 +37,7 @@ def export_double_integrator_model():
 
     return model
 
-def main(modification=9):
+def main(modification=0):
     # create ocp object to formulate the OCP
     ocp = AcadosOcp()
 
@@ -58,14 +58,17 @@ def main(modification=9):
     u_init = np.array([-0.0, -0.0])
 
     globalization = 'FIXED_STEP'
-    qp_solver_iter_max = 50
+    qp_solver_iter_max = 100
     qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+    # globalization = 'MERIT_BACKTRACKING'
+    # globalization = 'FUNNEL_L1PEN_LINESEARCH'
+    # qp_solver = 'FULL_CONDENSING_QPOASES'
 
     if modification == 1:
         # Change initial position
         Xi_0 = [-10, 0]
-        globalization = 'MERIT_BACKTRACKING'
-        qp_solver_iter_max = 100
+        # globalization = 'MERIT_BACKTRACKING'
+        # qp_solver_iter_max = 100
     elif modification == 2:
         # Change initial velocity
         Vi_0 = [-3,6]
@@ -73,8 +76,9 @@ def main(modification=9):
         u_init = np.array([-1.0, -1.0])
     elif modification == 4:
         Tf = 10.0
-        qp_solver = "FULL_CONDENSING_DAQP"
-        qp_solver_iter_max = 200
+        # u_init = np.array([-1.0, -1.0])
+        # qp_solver = "FULL_CONDENSING_DAQP"
+        # qp_solver_iter_max = 200
     # other QP solver settings
     elif modification == 5:
         # fails with infeasible QP
@@ -99,8 +103,6 @@ def main(modification=9):
 
     x0 = np.array(Xi_0 + Vi_0)
 
-    # the 'EXTERNAL' cost type can be used to define general cost terms
-    # NOTE: This leads to additional (exact) hessian contributions when using GAUSS_NEWTON hessian.
     ###########################################################################
     # Define cost
     ###########################################################################
@@ -163,7 +165,7 @@ def main(modification=9):
     max_velocity_squared_xy = 100
     max_acc_squared_xy = 9
 
-    constraint_formulation = "BGH"
+    constraint_formulation = "BGP"
     lh = 1e3 * np.array([-1, -1])
     uh = np.array([max_velocity_squared_xy, max_acc_squared_xy])
     if constraint_formulation == "BGH":
@@ -192,6 +194,13 @@ def main(modification=9):
         ocp.model.con_r_expr_0 = ocp.model.con_r_expr
         ocp.constraints.uphi_0 = uh
         ocp.constraints.lphi_0 = lh
+        ocp.solver_options.exact_hess_constr = 0
+
+        # ocp.model.con_r_in_phi = cs.SX.sym('con_r', 2, 1)
+        # ocp.model.con_phi_expr = cs.sumsqr(ocp.model.con_r_in_phi)
+        # ocp.model.con_r_expr = cs.vertcat(ocp.model.x[2:])
+        # ocp.constraints.uphi = np.array([uh[0]])
+        # ocp.constraints.lphi = np.array([lh[0]])
 
     ###########################################################################
     # set solver options
@@ -201,19 +210,15 @@ def main(modification=9):
     # ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
     ocp.solver_options.hessian_approx = 'EXACT'
     ocp.solver_options.integrator_type = 'ERK'
-    # ocp.solver_options.sim_method_num_steps = M
     ocp.solver_options.print_level = 1
-    # ocp.solver_options.nlp_solver_ext_qp_res = 1
 
     # DDP options
     ocp.solver_options.nlp_solver_max_iter = 100
     ocp.solver_options.qp_solver_iter_max = qp_solver_iter_max
     ocp.solver_options.nlp_solver_type = 'SQP'
-    # ocp.solver_options.globalization = 'FUNNEL_L1PEN_LINESEARCH'
     ocp.solver_options.globalization = globalization
-    ocp.solver_options.with_adaptive_levenberg_marquardt = False
     # ocp.solver_options.reg_epsilon = 1e-3
-    ocp.solver_options.regularize_method = 'MIRROR'
+    # ocp.solver_options.regularize_method = 'MIRROR'
 
     # set prediction horizon
     ocp.solver_options.tf = Tf
@@ -228,11 +233,14 @@ def main(modification=9):
     for i in range(N):
         ocp_solver.set(i, "x", x0)
         ocp_solver.set(i, "u", u_init)
+        # ocp_solver.set(i, "lam", np.ones(ocp_solver.get(i, "lam").shape))
     ocp_solver.set(N, "x", x0)
 
     # Solve the problem
     status = ocp_solver.solve()
     ocp_solver.print_statistics()
+
+    evaluate_hessian_eigenvalues(ocp_solver, N)
 
     # get solution
     for i in range(N):
@@ -266,13 +274,13 @@ def main(modification=9):
 
 
 
-def evaluate_hessian_eigenvalues(acados_solver: AcadosOcpSolver, N_horizon: int):
+def evaluate_hessian_eigenvalues(ocp_solver: AcadosOcpSolver, N_horizon: int):
     offset = 0
     min_eigv_total = 1e12
     min_abs_eigv = 1e12
 
     for i in range(N_horizon+1):
-        hess_block_acados = acados_solver.get_hessian_block(i)
+        hess_block_acados = ocp_solver.get_hessian_block(i)
         nv = hess_block_acados.shape[0]
         offset += nv
 
@@ -284,30 +292,32 @@ def evaluate_hessian_eigenvalues(acados_solver: AcadosOcpSolver, N_horizon: int)
 
         min_abs_eigv = min(min_abs_eigv, np.min(np.abs(eigv)))
 
-    # check projected Hessian
-    min_abs_eig_proj_hess = 1e12
-    min_eig_proj_hess = 1e12
-    min_eig_P = 1e12
-    min_abs_eig_P = 1e12
-    for i in range(1, N_horizon):
-        P_mat = acados_solver.get_from_qp_in(i, 'P')
-        B_mat = acados_solver.get_from_qp_in(i-1, 'B')
-        # Lr: lower triangular decomposition of R within Riccati != R in qp_in!
-        Lr = acados_solver.get_from_qp_in(i-1, 'Lr')
-        R_ric = Lr @ Lr.T
-        proj_hess_block = R_ric + B_mat.T @ P_mat @ B_mat
-        eigv = np.linalg.eigvals(proj_hess_block)
-        min_eigv = np.min(eigv)
-        min_eig_proj_hess = min(min_eigv, min_eig_proj_hess)
-        min_abs_eig_proj_hess = min(min_abs_eig_proj_hess, np.min(np.abs(eigv)))
-        # P
-        eigv = np.linalg.eigvals(P_mat)
-        min_eig_P = min(min_eig_P, np.min(eigv))
-        min_abs_eig_P = min(min_abs_eig_P, np.min(np.abs(eigv)))
+    # # check projected Hessian
+    # min_abs_eig_proj_hess = 1e12
+    # min_eig_proj_hess = 1e12
+    # min_eig_P = 1e12
+    # min_abs_eig_P = 1e12
+    # for i in range(1, N_horizon):
+    #     P_mat = ocp_solver.get_from_qp_in(i, 'P')
+    #     B_mat = ocp_solver.get_from_qp_in(i-1, 'B')
+    #     # Lr: lower triangular decomposition of R within Riccati != R in qp_in!
+    #     Lr = ocp_solver.get_from_qp_in(i-1, 'Lr')
+    #     R_ric = Lr @ Lr.T
+    #     proj_hess_block = R_ric + B_mat.T @ P_mat @ B_mat
+    #     eigv = np.linalg.eigvals(proj_hess_block)
+    #     min_eigv = np.min(eigv)
+    #     min_eig_proj_hess = min(min_eigv, min_eig_proj_hess)
+    #     min_abs_eig_proj_hess = min(min_abs_eig_proj_hess, np.min(np.abs(eigv)))
+    #     # P
+    #     eigv = np.linalg.eigvals(P_mat)
+    #     min_eig_P = min(min_eig_P, np.min(eigv))
+    #     min_abs_eig_P = min(min_abs_eig_P, np.min(np.abs(eigv)))
 
-    print(f"Minimum eigenvalue of total Hessian: {min_eigv_total, min_abs_eigv, min_abs_eig_proj_hess, min_eig_proj_hess, min_eig_P, min_abs_eig_P}")
+    print(f"Eigenvalue analysis of Hessian:")
+    print(f"Minimum eigenvalue: {min_eigv_total} at shooting node {i_worst_eigv}")
+    print(f"Minimum absolute eigenvalue: {min_abs_eigv}")
 
-    return min_eigv_total, min_abs_eigv, min_abs_eig_proj_hess, min_eig_proj_hess, min_eig_P, min_abs_eig_P, i_worst_eigv
+    return min_eigv_total, min_abs_eigv, i_worst_eigv
 
 
 if __name__ == '__main__':
